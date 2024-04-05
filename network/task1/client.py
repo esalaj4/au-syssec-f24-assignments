@@ -1,8 +1,24 @@
 import socket
+from struct import pack
 import sys
 # import os
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
+
+def icmp_checksum(data):
+    if len(data) % 2:
+        data += b'\x00'
+
+    sum = 0
+    for i in range(0, len(data), 2):
+        word = data[i] + (data[i+1] << 8)
+        sum += word
+        sum = (sum & 0xffff) + (sum >> 16)
+
+    checksum = ~sum & 0xffff
+    checksum = checksum >> 8 | (checksum << 8 & 0xff00)
+    return checksum
+
 
 if __name__ == '__main__':
     # Initialize AES encryption
@@ -30,7 +46,9 @@ if __name__ == '__main__':
         padded_message = message.ljust((len(message) + 15) // 16 * 16, '\0')
         encrypted_message = encryptor.update(padded_message.encode()) + encryptor.finalize()
 
-        # TODO: Proper checksum calculation 
-        packet = b'\x2f\x00' + b'\x00\x00' + encrypted_message  # Type 47, Code 0, Checksum 0, followed by data
-        #      Type=47(x2f)  Code=0(x00)  Checksum=0  Payload
+        packet = b'\x2f\x00' + b'\x00\x00' + encrypted_message
+        #      Type=47(x2f)  Code=0(x00)  Initial checksum=0(\x00\x00)  Payload
+        checksum = icmp_checksum(packet) # Calculate the checksum
+        packet = pack('!bbH', 0x2f, 0x00, checksum) + encrypted_message
+        # '!bbH' stands for network byte order, 1 byte, 1 byte, 2 bytes
         s.sendto(packet, (destination_ip, 0))
