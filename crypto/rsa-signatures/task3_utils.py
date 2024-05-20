@@ -1,4 +1,5 @@
 import random
+import secrets
 import hashlib
 import os
 
@@ -46,7 +47,7 @@ def is_prime(n, k=128):
     return True
 
 def generate_prime_candidate(n):
-    p = random.getrandbits(n)
+    p = secrets.randbits(n)
     p |= (1 << n - 1) | 1
     return p
 
