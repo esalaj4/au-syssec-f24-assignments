@@ -6,15 +6,25 @@ from task3_utils import *
 def generate_rsa_keys():
     bit_length = 3072
     prime_number_bits = bit_length // 2
-    e = 65537 
-    
-    p = generate_prime_number(prime_number_bits)
-    q = generate_prime_number(prime_number_bits)
+    e = 65537
+
+    # Ensure p and q are distinct primes
+    while True:
+        p = generate_prime_number(prime_number_bits)
+        q = generate_prime_number(prime_number_bits)
+        if p != q:
+            break
+
     n = p * q
     phi = (p - 1) * (q - 1)
-    d = modinv(e, phi)
 
-    # (e, n) - public key; (d, n) - private key
+    # Ensure e is relatively prime to phi
+    if gcd(e, phi) != 1:
+        raise ValueError('Chosen e is not relatively prime to phi(n)')
+
+    d = mod_inverse(e, phi)
+
+    # (e, n) - public key ; (d, n) - private key
     return ((e, n), (d, n))
 
 # Sign a message using RSA-PSS
