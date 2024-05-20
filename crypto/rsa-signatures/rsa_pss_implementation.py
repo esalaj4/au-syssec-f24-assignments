@@ -4,6 +4,10 @@ import hashlib
 def ceil_div(a, b):
     return -(-a // b)
 
+def _and_byte(a, b):
+    return bytes([a & b])
+
+
 def int_to_bytes(integer, length):
     if integer >= 256 ** length:
         raise ValueError('Integer too large for the specified length')
