@@ -1,7 +1,7 @@
 import hashlib
 import math
+import secrets
 from task3_utils import *
-
 
 # Generate RSA keys
 def generate_rsa_keys():
@@ -20,10 +20,10 @@ def generate_rsa_keys():
     phi = (p - 1) * (q - 1)
 
     # Ensure e is relatively prime to phi
-    if gcd(e, phi) != 1:
+    if math.gcd(e, phi) != 1:
         raise ValueError('Chosen e is not relatively prime to phi(n)')
 
-    d = mod_inverse(e, phi)
+    d = modinv(e, phi)
 
     # (e, n) - public key ; (d, n) - private key
     return ((e, n), (d, n))
@@ -32,7 +32,8 @@ def generate_rsa_keys():
 def sign_message(private_key, message, s_len=32):
     m_hash = hashlib.sha256(message).digest()
     mod_bits = private_key[1].bit_length()
-    em = emsa_pss_encode(m_hash, mod_bits - 1, s_len=s_len, hash_class=hashlib.sha256)
+    salt = secrets.token_bytes(s_len)
+    em = emsa_pss_encode(m_hash, mod_bits - 1, salt=salt, hash_class=hashlib.sha256)
     m_int = bytes_to_int(em)
     n, d = private_key
     s_int = pow(m_int, d, n)
@@ -49,7 +50,6 @@ def verify_signature(public_key, message, signature, s_len=32):
         return is_valid
     except ValueError:
         return False
-
 
 public_key, private_key = generate_rsa_keys()
 print("\nPublic key:", public_key)
