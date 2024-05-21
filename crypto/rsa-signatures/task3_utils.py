@@ -1,6 +1,5 @@
-import random
-import secrets
 import hashlib
+import secrets
 
 def modinv(a, m):
     g, x, _ = extended_gcd(a, m)
@@ -56,50 +55,10 @@ def generate_prime_number(n):
         p = generate_prime_candidate(n)
     return p
 
-def int_to_bytes(i):
-    return i.to_bytes((i.bit_length() + 7) // 8, 'big')
-
-def bytes_to_int(b):
-    return int.from_bytes(b, 'big')
-
-# Mask Generation Function based on a hash function (MGF1)
 def mgf1(mgf_seed, mask_len, hash_class=hashlib.sha256):
+    h_len = hash_class().digest_size
     t = b""
-    for counter in range(0, (mask_len // hash_class().digest_size) + 1):
+    for counter in range(0, (mask_len // h_len) + 1):
         C = counter.to_bytes(4, 'big')
         t += hash_class(mgf_seed + C).digest()
     return t[:mask_len]
-
-# EMSA-PSS Encode function as per RFC 8017
-def emsa_pss_encode(M, em_bits, s_len=32, hash_class=hashlib.sha256, salt=None):
-    m_hash = hash_class(M).digest()
-    em_len = (em_bits + 7) // 8
-    if em_len < hash_class().digest_size + s_len + 2:
-        raise ValueError("Encoding error")
-
-    # Use provided salt or generate a new one
-    if salt is None:
-        salt = secrets.token_bytes(s_len)  # Use secrets.token_bytes for secure salt generation
-
-    M_prime = b'\x00' * 8 + m_hash + salt
-    H = hash_class(M_prime).digest()
-    PS = b'\x00' * (em_len - s_len - hash_class().digest_size - 2)
-    DB = PS + b'\x01' + salt
-    dbMask = mgf1(H, em_len - hash_class().digest_size - 1, hash_class)
-    maskedDB = bytes(a ^ b for a, b in zip(DB, dbMask))
-    maskedDB = maskedDB[0:-(em_bits // 8)] + b'\x00' + maskedDB[-(em_bits // 8) + 1:]
-    EM = maskedDB + H + b'\xbc'
-    return EM
-
-# EMSA-PSS Verify function as per RFC 8017
-def emsa_pss_verify(M, EM, em_bits, s_len=32, hash_class=hashlib.sha256):
-    m_hash = hash_class(M).digest()
-    em_len = (em_bits + 7) // 8
-    maskedDB = EM[:em_len - hash_class().digest_size - 1]
-    H = EM[em_len - hash_class().digest_size - 1:-1]
-    dbMask = mgf1(H, em_len - hash_class().digest_size - 1, hash_class)
-    DB = bytes(a ^ b for a, b in zip(maskedDB, dbMask))
-    salt = DB[-s_len:]
-    M_prime = b'\x00' * 8 + m_hash + salt
-    H_prime = hash_class(M_prime).digest()
-    return H == H_prime
