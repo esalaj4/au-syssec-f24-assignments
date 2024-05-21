@@ -1,7 +1,6 @@
 import random
 import secrets
 import hashlib
-import os
 
 def modinv(a, m):
     g, x, _ = extended_gcd(a, m)
@@ -28,7 +27,7 @@ def is_prime(n, k=128):
         d //= 2
 
     for _ in range(k):
-        a = random.randint(2, n - 2)
+        a = secrets.randbelow(n - 3) + 2  # Use secrets.randbelow for secure random number generation
         x = pow(a, d, n)
 
         if x == 1 or x == n - 1:
@@ -72,13 +71,16 @@ def mgf1(mgf_seed, mask_len, hash_class=hashlib.sha256):
     return t[:mask_len]
 
 # EMSA-PSS Encode function as per RFC 8017
-def emsa_pss_encode(M, em_bits, s_len=32, hash_class=hashlib.sha256):
+def emsa_pss_encode(M, em_bits, s_len=32, hash_class=hashlib.sha256, salt=None):
     m_hash = hash_class(M).digest()
     em_len = (em_bits + 7) // 8
     if em_len < hash_class().digest_size + s_len + 2:
-        raise ValueError()
+        raise ValueError("Encoding error")
 
-    salt = os.urandom(s_len)
+    # Use provided salt or generate a new one
+    if salt is None:
+        salt = secrets.token_bytes(s_len)  # Use secrets.token_bytes for secure salt generation
+
     M_prime = b'\x00' * 8 + m_hash + salt
     H = hash_class(M_prime).digest()
     PS = b'\x00' * (em_len - s_len - hash_class().digest_size - 2)
